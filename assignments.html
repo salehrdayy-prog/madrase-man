@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تکلیف و آزمون</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .box {
+            background: #0d1117;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #30363d;
+        }
+        .assignment-item {
+            background: #161b22;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+            margin-bottom: 10px;
+        }
+        .assignment-item h4 { color: #58a6ff; margin: 0 0 5px 0; }
+        .assignment-item p { color: #8b949e; font-size: 13px; margin: 0 0 5px 0; }
+        .btn-sm {
+            width: auto;
+            padding: 4px 10px;
+            font-size: 12px;
+            margin: 3px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="margin:0; color:#58a6ff;">📝 تکلیف و آزمون</h2>
+            <div style="display:flex; gap:10px;">
+                <button onclick="window.location.href='teacher_home.html'" style="width:auto; padding:8px 15px; background:#21262d;">🔙 بازگشت</button>
+                <button onclick="logout()" style="width:auto; padding:8px 15px; background:#da3633;">خروج</button>
+            </div>
+        </div>
+
+        <div id="teacherSection" class="box">
+            <h3 style="color:#238636;">➕ ثبت تکلیف جدید</h3>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <input type="text" id="assignmentTitle" placeholder="عنوان تکلیف (مثلاً: حل تمرین ریاضی)" style="flex:1;">
+                <input type="date" id="assignmentDueDate" style="flex:1;">
+                <input type="text" id="assignmentClass" placeholder="کلاس (مثلاً: دهم ریاضی)" style="flex:1;">
+            </div>
+            <textarea id="assignmentDescription" placeholder="توضیحات تکلیف..." style="width:100%; height:80px; margin-top:10px;"></textarea>
+            <div style="margin-top:10px;">
+                <button onclick="createAssignment()" style="width:auto; padding:8px 20px; background:#238636;">ثبت تکلیف</button>
+            </div>
+        </div>
+
+        <div class="box">
+            <h3 style="color:#d29922;">📋 لیست تکلیف‌ها</h3>
+            <div id="assignmentsList"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function getAssignments() {
+            try {
+                const data = JSON.parse(localStorage.getItem('assignments')) || [];
+                return Array.isArray(data) ? data : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveAssignments(list) {
+            localStorage.setItem('assignments', JSON.stringify(list));
+        }
+
+        window.onload = function() {
+            if (localStorage.getItem('userRole') !== 'teacher') {
+                window.location.href = 'index.html';
+                return;
+            }
+            loadAssignments();
+        };
+
+        function createAssignment() {
+            const title = document.getElementById('assignmentTitle').value.trim();
+            const dueDate = document.getElementById('assignmentDueDate').value;
+            const className = document.getElementById('assignmentClass').value.trim();
+            const description = document.getElementById('assignmentDescription').value.trim();
+
+            if (!title || !dueDate || !className) {
+                alert("لطفاً عنوان، تاریخ و کلاس را وارد کنید!");
+                return;
+            }
+
+            const assignments = getAssignments();
+            assignments.push({
+                id: Date.now().toString() + Math.floor(Math.random() * 1000),
+                title: title,
+                dueDate: dueDate,
+                className: className,
+                description: description
+            });
+            saveAssignments(assignments);
+
+            document.getElementById('assignmentTitle').value = '';
+            document.getElementById('assignmentDueDate').value = '';
+            document.getElementById('assignmentClass').value = '';
+            document.getElementById('assignmentDescription').value = '';
+            loadAssignments();
+            alert("تکلیف با موفقیت ثبت شد!");
+        }
+
+        function loadAssignments() {
+            const display = document.getElementById('assignmentsList');
+            const assignments = getAssignments();
+
+            if (assignments.length === 0) {
+                display.innerHTML = '<p style="color:#8b949e;">هیچ تکلیفی ثبت نشده است.</p>';
+                return;
+            }
+
+            let html = '<div style="display:flex; flex-direction:column; gap:10px;">';
+            assignments.forEach((item) => {
+                html += `
+                    <div class="assignment-item">
+                        <h4>${escapeHtml(item.title)}</h4>
+                        <p>کلاس: ${escapeHtml(item.className)} | تاریخ تحویل: ${escapeHtml(item.dueDate)}</p>
+                        <p>${escapeHtml(item.description || 'بدون توضیحات')}</p>
+                        <button onclick="deleteAssignment('${item.id}')" class="btn-sm" style="background:#da3633;">حذف</button>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            display.innerHTML = html;
+        }
+
+        function deleteAssignment(assignmentId) {
+            if (!confirm("آیا مطمئن هستید که می‌خواهید این تکلیف را حذف کنید؟")) return;
+            
+            let assignments = getAssignments();
+            assignments = assignments.filter(a => a.id !== assignmentId);
+            saveAssignments(assignments);
+            loadAssignments();
+        }
+    </script>
+</body>
+</html>

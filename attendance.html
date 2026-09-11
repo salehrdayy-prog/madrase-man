@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حضور و غیاب + تشویق و تنبیه</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .attendance-box { background: #0d1117; border-radius: 15px; padding: 15px; margin-top: 15px; }
+        .date-selector {
+            display: flex; gap: 10px; align-items: center; background: #161b22;
+            padding: 10px 15px; border-radius: 10px; margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .date-selector input { 
+            background: #0d1117; border: 1px solid #30363d; color: #c9d1d9; 
+            padding: 8px; border-radius: 5px; flex: 1; min-width: 100px; 
+        }
+        .student-row {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #0d1117; padding: 10px; border-bottom: 1px solid #30363d;
+            flex-wrap: wrap; gap: 10px;
+        }
+        .student-row:last-child { border-bottom: none; }
+        .student-name { font-weight: bold; flex: 1; color: #c9d1d9; min-width: 100px; }
+        .status-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .action-btn { 
+            padding: 6px 12px; border-radius: 6px; border: 1px solid #30363d; 
+            background: #161b22; color: #c9d1d9; cursor: pointer; 
+            transition: 0.2s; font-size: 14px; 
+        }
+        .action-btn:hover { transform: scale(1.05); border-color: #c9d1d9; }
+        .btn-present.active { background: #238636; color: white; border-color: #238636; }
+        .btn-absent.active { background: #da3633; color: white; border-color: #da3633; }
+        .btn-excused.active { background: #d29922; color: white; border-color: #d29922; }
+        .btn-positive { background: #1f6feb; color: white; }
+        .btn-negative { background: #f85149; color: white; }
+        .empty-state { text-align: center; color: #8b949e; padding: 30px 0; }
+        .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        
+        /* باکس کنترل گزارش - همیشه دیده می‌شود */
+        .report-box {
+            background: #161b22; padding: 15px; border-radius: 10px; margin-top: 20px;
+            border: 1px solid #30363d;
+        }
+        /* باکس نتیجه گزارش - فقط بعد از کلیک دیده می‌شود */
+        .report-result {
+            display: none;
+        }
+        .report-box table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .report-box th, .report-box td { 
+            padding: 8px; text-align: center; border-bottom: 1px solid #30363d; 
+        }
+        .report-box th { background: #0d1117; color: #58a6ff; }
+        .stat-card {
+            background: #0d1117; padding: 10px; border-radius: 8px; text-align: center;
+            flex: 1; min-width: 80px; border: 1px solid #30363d;
+        }
+        .stat-card .num { font-size: 22px; font-weight: bold; color: #58a6ff; }
+        .stat-card .label { font-size: 12px; color: #8b949e; }
+        
+        @media print {
+            body * { visibility: hidden; }
+            .print-area, .print-area * { visibility: visible; }
+            .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;" class="no-print">
+            <h2 style="margin:0; color:#d29922;">📋 حضور و غیاب</h2>
+            <div class="header-actions">
+                <button onclick="window.location.href='teacher_home.html'" style="width:auto; padding:8px 15px; background:#21262d;">🔙 بازگشت</button>
+                <button onclick="logout()" style="width:auto; padding:8px 15px; background:#da3633;">خروج</button>
+            </div>
+        </div>
+
+        <div style="background:#161b22; padding:10px 15px; border-radius:10px; border-right: 4px solid #d29922; margin-bottom:20px;">
+            <strong id="currentClassNameDisplay">کلاس: بارگذاری...</strong>
+        </div>
+
+        <div class="date-selector no-print">
+            <label style="font-weight:bold; color:#8b949e;">📅 تاریخ:</label>
+            <input type="date" id="attendanceDate">
+            <button onclick="loadData()" style="width:auto; padding:8px 20px; background:#58a6ff; font-size:14px;">بارگذاری</button>
+        </div>
+
+        <div class="attendance-box no-print">
+            <div id="studentsListContainer">
+                <div class="empty-state">در حال بارگذاری...</div>
+            </div>
+        </div>
+
+        <!-- باکس کنترل گزارش - همیشه دیده می‌شود -->
+        <div class="report-box no-print" id="reportControlBox">
+            <h3 style="color:#238636; margin-bottom:10px;">📊 گزارش عملکرد</h3>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+                <div style="flex:1; min-width:150px;">
+                    <label style="font-size:12px; color:#8b949e;">انتخاب ماه (برای گزارش ماهانه):</label>
+                    <input type="month" id="reportMonth" style="width:100%; padding:8px; background:#0d1117; color:#c9d1d9; border:1px solid #30363d; border-radius:5px;">
+                </div>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+                <button onclick="generateDailyReport()" style="width:auto; padding:8px 15px; background:#58a6ff; font-size:13px;">📆 گزارش روزانه</button>
+                <button onclick="generateAttendanceReport()" style="width:auto; padding:8px 15px; background:#238636; font-size:13px;">📊 گزارش ماهانه</button>
+                <button onclick="generateTotalReport()" style="width:auto; padding:8px 15px; background:#1f6feb; font-size:13px;">📋 گزارش کل</button>
+            </div>
+            <p style="font-size:11px; color:#8b949e; margin-top:8px;">گزارش روزانه بر اساس تاریخ بالای صفحه، ماهانه بر اساس ماه انتخاب‌شده، و کل بدون فیلتر است.</p>
+        </div>
+
+        <!-- باکس نتیجه گزارش - فقط بعد از کلیک دیده می‌شود -->
+        <div class="report-box report-result print-area" id="reportBox">
+            <h3 style="color:#238636; margin-bottom:10px;" id="reportTitle">📊 گزارش عملکرد کلاس</h3>
+            <div id="reportContent"></div>
+            <div style="display:flex; gap:10px; margin-top:15px;" class="no-print">
+                <button class="back-to-list-btn" onclick="closeReport()" style="width:auto; padding:10px 20px; background:#21262d; border-radius:8px; cursor:pointer;">🔙 بستن گزارش</button>
+                <button class="back-to-list-btn" onclick="window.print()" style="width:auto; padding:10px 20px; background:#1f6feb; border-radius:8px; cursor:pointer;">🖨️ چاپ گزارش</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        let activeClassId = localStorage.getItem('activeClassId');
+        let teacherId = localStorage.getItem('teacherId');
+
+        // تابع escape
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // دریافت ایمن کلاس
+        function getCurrentClass() {
+            if (!teacherId || !activeClassId) return null;
+            
+            const school = getSchoolData();
+            const teacher = school.teachers.find(t => t.id === teacherId);
+            
+            if (!teacher || !Array.isArray(teacher.classes)) return null;
+            
+            return teacher.classes.find(c => c.id === activeClassId) || null;
+        }
+
+        window.onload = function() {
+            if (!activeClassId || localStorage.getItem('userRole') !== 'teacher') {
+                window.location.href = 'teacher_home.html'; 
+                return;
+            }
+            
+            const cls = getCurrentClass();
+            if (!cls) {
+                alert("کلاس یافت نشد! به صفحه قبل برمی‌گردید.");
+                window.location.href = 'teacher_home.html';
+                return;
+            }
+            
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('attendanceDate').value = today;
+            
+            const now = new Date();
+            document.getElementById('reportMonth').value = 
+                now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+            
+            loadData();
+        };
+
+        function loadData() {
+            const cls = getCurrentClass();
+            if (!cls) {
+                document.getElementById('currentClassNameDisplay').innerText = "کلاس: نامشخص";
+                document.getElementById('studentsListContainer').innerHTML = 
+                    `<div class="empty-state">کلاس یافت نشد.</div>`;
+                return;
+            }
+            
+            document.getElementById('currentClassNameDisplay').innerText = "کلاس: " + cls.name;
+
+            const students = Array.isArray(cls.students) ? cls.students : [];
+            const container = document.getElementById('studentsListContainer');
+
+            if (students.length === 0) {
+                container.innerHTML = `<div class="empty-state">هیچ دانش‌آموزی در این کلاس وجود ندارد.</div>`;
+                return;
+            }
+
+            const date = document.getElementById('attendanceDate').value;
+            if (!date) { alert("لطفاً تاریخ را انتخاب کنید."); return; }
+
+            const attendanceData = getAttendanceByClass(activeClassId);
+            let scoresData = JSON.parse(localStorage.getItem(`scores_${activeClassId}`)) || {};
+            if (typeof scoresData !== 'object' || scoresData === null) scoresData = {};
+
+            let html = `<div style="background:#0d1117; border-radius:10px; overflow:hidden;">`;
+            
+            students.forEach(s => {
+                const key = `${s.id}_${date}`;
+                const status = attendanceData[key] || 'empty';
+                const score = scoresData[key] || 0;
+
+                let btnsHtml = '';
+
+                if (status === 'present') {
+                    btnsHtml += `<button class="action-btn btn-present active" onclick="setStatus('${s.id}','${date}','empty')" title="حاضر">✅</button>`;
+                } else {
+                    btnsHtml += `<button class="action-btn btn-present" onclick="setStatus('${s.id}','${date}','present')" title="ثبت حاضر">✅</button>`;
+                }
+
+                if (status === 'absent') {
+                    btnsHtml += `<button class="action-btn btn-absent active" onclick="setStatus('${s.id}','${date}','empty')" title="غایب">❌</button>`;
+                } else {
+                    btnsHtml += `<button class="action-btn btn-absent" onclick="setStatus('${s.id}','${date}','absent')" title="ثبت غایب">❌</button>`;
+                }
+
+                if (status === 'excused') {
+                    btnsHtml += `<button class="action-btn btn-excused active" onclick="setStatus('${s.id}','${date}','empty')" title="مرخصی">🟡</button>`;
+                } else {
+                    btnsHtml += `<button class="action-btn btn-excused" onclick="setStatus('${s.id}','${date}','excused')" title="ثبت مرخصی">🟡</button>`;
+                }
+
+                let scoreText = '';
+                if (score > 0) scoreText = `<span style="color:#1f6feb; font-weight:bold;">+${score}</span>`;
+                else if (score < 0) scoreText = `<span style="color:#f85149; font-weight:bold;">${score}</span>`;
+                else scoreText = '<span style="color:#8b949e;">0</span>';
+
+                btnsHtml += `
+                    <button class="action-btn btn-positive" onclick="addScore('${s.id}','${date}',1)" title="امتیاز مثبت">➕</button>
+                    <button class="action-btn btn-negative" onclick="addScore('${s.id}','${date}',-1)" title="امتیاز منفی">➖</button>
+                `;
+
+                html += `
+                    <div class="student-row">
+                        <div class="student-name">${escapeHtml(s.name)}</div>
+                        <div class="status-actions">
+                            <div style="display:flex; gap:4px;">${btnsHtml}</div>
+                            <span style="min-width:30px; text-align:center;">${scoreText}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function setStatus(studentId, date, newStatus) {
+            const data = getAttendanceByClass(activeClassId);
+            const key = `${studentId}_${date}`;
+            
+            if (newStatus === 'empty') {
+                delete data[key];
+            } else {
+                data[key] = newStatus;
+            }
+            
+            saveAttendanceByClass(activeClassId, data);
+            loadData();
+        }
+
+        function addScore(studentId, date, change) {
+            let data = JSON.parse(localStorage.getItem(`scores_${activeClassId}`)) || {};
+            if (typeof data !== 'object' || data === null) data = {};
+            
+            const key = `${studentId}_${date}`;
+            data[key] = (data[key] || 0) + change;
+            
+            if (data[key] === 0) delete data[key];
+            
+            localStorage.setItem(`scores_${activeClassId}`, JSON.stringify(data));
+            loadData();
+        }
+
+        // ============================================
+        // ✅ گزارش روزانه (جدید)
+        // ============================================
+        function generateDailyReport() {
+            const cls = getCurrentClass();
+            if (!cls) { alert("کلاس یافت نشد!"); return; }
+            
+            const students = Array.isArray(cls.students) ? cls.students : [];
+            if (students.length === 0) { alert("هیچ دانش‌آموزی برای گزارش وجود ندارد."); return; }
+
+            const date = document.getElementById('attendanceDate').value;
+            if (!date) { alert("لطفاً تاریخ را در بالای صفحه انتخاب کنید."); return; }
+
+            const attendanceData = getAttendanceByClass(activeClassId);
+            let scoresData = JSON.parse(localStorage.getItem(`scores_${activeClassId}`)) || {};
+            if (typeof scoresData !== 'object' || scoresData === null) scoresData = {};
+
+            // فیلتر فقط همان روز
+            const filteredAttendance = {};
+            const filteredScores = {};
+            
+            Object.keys(attendanceData).forEach(key => {
+                const parts = key.split('_');
+                if (parts.length < 2) return;
+                if (parts[1] === date) {
+                    filteredAttendance[key] = attendanceData[key];
+                }
+            });
+
+            Object.keys(scoresData).forEach(key => {
+                const parts = key.split('_');
+                if (parts.length < 2) return;
+                if (parts[1] === date) {
+                    filteredScores[key] = scoresData[key];
+                }
+            });
+
+            if (Object.keys(filteredAttendance).length === 0 && Object.keys(filteredScores).length === 0) {
+                alert(`هیچ رکوردی برای تاریخ ${date} ثبت نشده است.`);
+                return;
+            }
+
+            renderReport(cls, students, filteredAttendance, filteredScores, `گزارش روزانه - ${date}`, true);
+        }
+
+        // ============================================
+        // گزارش ماهانه
+        // ============================================
+        function generateAttendanceReport() {
+            const cls = getCurrentClass();
+            if (!cls) { alert("کلاس یافت نشد!"); return; }
+            
+            const students = Array.isArray(cls.students) ? cls.students : [];
+            if (students.length === 0) { alert("هیچ دانش‌آموزی برای گزارش وجود ندارد."); return; }
+
+            const monthInput = document.getElementById('reportMonth').value;
+            if (!monthInput) { 
+                alert("لطفاً ماه را انتخاب کنید. (یا از دکمه «گزارش کل» استفاده کنید)");
+                return; 
+            }
+            
+            const [year, month] = monthInput.split('-').map(Number);
+            const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
+
+            const attendanceData = getAttendanceByClass(activeClassId);
+            let scoresData = JSON.parse(localStorage.getItem(`scores_${activeClassId}`)) || {};
+            if (typeof scoresData !== 'object' || scoresData === null) scoresData = {};
+
+            const filteredAttendance = {};
+            Object.keys(attendanceData).forEach(key => {
+                const parts = key.split('_');
+                if (parts.length < 2) return;
+                const dateStr = parts[1];
+                if (dateStr && dateStr.startsWith(monthPrefix)) {
+                    filteredAttendance[key] = attendanceData[key];
+                }
+            });
+
+            const filteredScores = {};
+            Object.keys(scoresData).forEach(key => {
+                const parts = key.split('_');
+                if (parts.length < 2) return;
+                const dateStr = parts[1];
+                if (dateStr && dateStr.startsWith(monthPrefix)) {
+                    filteredScores[key] = scoresData[key];
+                }
+            });
+
+            if (Object.keys(filteredAttendance).length === 0 && Object.keys(filteredScores).length === 0) {
+                alert(`هیچ رکوردی برای ماه ${year}/${month} ثبت نشده است.`);
+                return;
+            }
+
+            renderReport(cls, students, filteredAttendance, filteredScores, `گزارش ماهانه - ${year}/${month}`, false);
+        }
+
+        // ============================================
+        // گزارش کل
+        // ============================================
+        function generateTotalReport() {
+            const cls = getCurrentClass();
+            if (!cls) { alert("کلاس یافت نشد!"); return; }
+            
+            const students = Array.isArray(cls.students) ? cls.students : [];
+            if (students.length === 0) { alert("هیچ دانش‌آموزی برای گزارش وجود ندارد."); return; }
+
+            const attendanceData = getAttendanceByClass(activeClassId);
+            let scoresData = JSON.parse(localStorage.getItem(`scores_${activeClassId}`)) || {};
+            if (typeof scoresData !== 'object' || scoresData === null) scoresData = {};
+
+            if (Object.keys(attendanceData).length === 0 && Object.keys(scoresData).length === 0) {
+                alert("هیچ رکوردی برای این کلاس ثبت نشده است.");
+                return;
+            }
+
+            renderReport(cls, students, attendanceData, scoresData, "📋 گزارش کل دوره", false);
+        }
+
+        // ============================================
+        // تابع مشترک نمایش گزارش
+        // isDaily = true → نمایش وضعیت هر دانش‌آموز در آن روز خاص
+        // isDaily = false → نمایش جمع کل
+        // ============================================
+        function renderReport(cls, students, attendanceData, scoresData, title, isDaily) {
+            let html = `
+                <div style="margin-bottom:10px; color:#8b949e; font-size:12px;">
+                    کلاس: <strong style="color:#58a6ff;">${escapeHtml(cls.name)}</strong>
+                </div>
+            `;
+
+            let totalPresents = 0, totalAbsents = 0, totalExcused = 0;
+            Object.keys(attendanceData).forEach(k => {
+                const v = attendanceData[k];
+                if (v === 'present') totalPresents++;
+                else if (v === 'absent') totalAbsents++;
+                else if (v === 'excused') totalExcused++;
+            });
+
+            html += `
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px;">
+                    <div class="stat-card"><div class="num" style="color:#3fb950;">${totalPresents}</div><div class="label">مجموع حاضر</div></div>
+                    <div class="stat-card"><div class="num" style="color:#f85149;">${totalAbsents}</div><div class="label">مجموع غایب</div></div>
+                    <div class="stat-card"><div class="num" style="color:#d29922;">${totalExcused}</div><div class="label">مجموع مرخصی</div></div>
+                    <div class="stat-card"><div class="num">${students.length}</div><div class="label">دانش‌آموزان</div></div>
+                </div>
+            `;
+
+            // حالت روزانه → ستون‌ها متفاوت
+            if (isDaily) {
+                html += `<table>
+                    <thead>
+                        <tr>
+                            <th>نام دانش‌آموز</th>
+                            <th>وضعیت</th>
+                            <th>امتیاز</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                `;
+
+                students.forEach(s => {
+                    let statusText = 'ثبت نشده';
+                    let statusColor = '#8b949e';
+                    let statusIcon = '—';
+                    
+                    // جستجو در رکوردهای این روز
+                    let foundStatus = null;
+                    Object.keys(attendanceData).forEach(key => {
+                        const parts = key.split('_');
+                        if (parts[0] === s.id) {
+                            foundStatus = attendanceData[key];
+                        }
+                    });
+                    
+                    if (foundStatus === 'present') { statusText = 'حاضر'; statusColor = '#3fb950'; statusIcon = '✅'; }
+                    else if (foundStatus === 'absent') { statusText = 'غایب'; statusColor = '#f85149'; statusIcon = '❌'; }
+                    else if (foundStatus === 'excused') { statusText = 'مرخصی'; statusColor = '#d29922'; statusIcon = '🟡'; }
+
+                    // امتیاز این روز
+                    let score = 0;
+                    Object.keys(scoresData).forEach(key => {
+                        const parts = key.split('_');
+                        if (parts[0] === s.id) {
+                            score += scoresData[key];
+                        }
+                    });
+
+                    html += `
+                        <tr>
+                            <td style="font-weight:bold; text-align:right;">${escapeHtml(s.name)}</td>
+                            <td style="color:${statusColor}; font-weight:bold;">${statusIcon} ${statusText}</td>
+                            <td style="color:${score > 0 ? '#1f6feb' : score < 0 ? '#f85149' : '#8b949e'}; font-weight:bold;">
+                                ${score > 0 ? '+' : ''}${score}
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += `</tbody></table>`;
+            } else {
+                // حالت ماهانه / کل → جمع کل
+                html += `<table>
+                    <thead>
+                        <tr>
+                            <th>نام دانش‌آموز</th>
+                            <th>حاضر</th>
+                            <th>غایب</th>
+                            <th>مرخصی</th>
+                            <th>درصد حضور</th>
+                            <th>امتیاز</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                `;
+
+                students.forEach(s => {
+                    let presents = 0;
+                    let absents = 0;
+                    let excused = 0;
+                    let totalScore = 0;
+
+                    Object.keys(attendanceData).forEach(key => {
+                        const parts = key.split('_');
+                        if (parts[0] !== s.id) return;
+                        
+                        const status = attendanceData[key];
+                        if (status === 'present') presents++;
+                        else if (status === 'absent') absents++;
+                        else if (status === 'excused') excused++;
+                    });
+
+                    Object.keys(scoresData).forEach(key => {
+                        const parts = key.split('_');
+                        if (parts[0] !== s.id) return;
+                        totalScore += scoresData[key];
+                    });
+
+                    const totalRecorded = presents + absents;
+                    const percent = totalRecorded > 0 ? Math.round((presents / totalRecorded) * 100) : 0;
+                    const percentColor = percent >= 80 ? '#3fb950' : percent >= 50 ? '#d29922' : '#f85149';
+
+                    html += `
+                        <tr>
+                            <td style="font-weight:bold; text-align:right;">${escapeHtml(s.name)}</td>
+                            <td style="color:#3fb950;">${presents}</td>
+                            <td style="color:#f85149;">${absents}</td>
+                            <td style="color:#d29922;">${excused}</td>
+                            <td style="color:${percentColor}; font-weight:bold;">${percent}%</td>
+                            <td style="color:${totalScore > 0 ? '#1f6feb' : totalScore < 0 ? '#f85149' : '#8b949e'}; font-weight:bold;">
+                                ${totalScore > 0 ? '+' : ''}${totalScore}
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += `</tbody></table>`;
+            }
+            
+            document.getElementById('reportTitle').innerText = title;
+            document.getElementById('reportContent').innerHTML = html;
+            document.getElementById('reportBox').style.display = 'block';
+            
+            setTimeout(() => {
+                document.getElementById('reportBox').scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
+
+        function closeReport() {
+            document.getElementById('reportBox').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

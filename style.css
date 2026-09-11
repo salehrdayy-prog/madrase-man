@@ -1,0 +1,268 @@
+/* ============================================ */
+/* تنظیمات کلی */
+/* ============================================ */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Tahoma', sans-serif;
+    background-color: #0d1117;
+    color: #c9d1d9;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+/* تم‌های رنگی (برای فروشگاه امتیازات) */
+body.theme-ocean {
+    background: linear-gradient(135deg, #0d1117 0%, #1a2a6c 50%, #b21f1f 100%);
+}
+body.theme-sunset {
+    background: linear-gradient(135deg, #0d1117 0%, #f7971e 50%, #ffd200 100%);
+}
+body.theme-forest {
+    background: linear-gradient(135deg, #0d1117 0%, #134e5e 50%, #71b280 100%);
+}
+
+/* کانتینر اصلی */
+.container {
+    width: 100%;
+    max-width: 900px;
+    background-color: #161b22;
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* تیترها */
+h1, h2, h3 {
+    color: #58a6ff;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* ============================================ */
+/* فرم‌ها و ورودی‌ها */
+/* ============================================ */
+input, select, textarea {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0;
+    background-color: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    color: #c9d1d9;
+    font-size: 16px;
+}
+
+input:focus, select:focus, textarea:focus {
+    border-color: #58a6ff;
+    outline: none;
+}
+
+label {
+    font-weight: bold;
+    display: block;
+    margin-top: 10px;
+    color: #8b949e;
+}
+
+/* دکمه‌ها */
+button {
+    padding: 12px;
+    margin-top: 10px;
+    background-color: #238636;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+    width: 100%;
+}
+
+button:hover {
+    background-color: #2ea043;
+}
+
+.btn-danger {
+    background-color: #da3633;
+}
+
+.btn-danger:hover {
+    background-color: #f85149;
+}
+
+/* دکمه‌های کوچک (عملیات داخل جدول) */
+.action-btn-small {
+    padding: 2px 10px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 2px;
+}
+
+.btn-edit {
+    background: #1f6feb;
+    color: white;
+}
+
+.btn-delete {
+    background: #da3633;
+    color: white;
+}
+
+/* ============================================ */
+/* دکمه‌های گرادیانی و شیشه‌ای */
+/* ============================================ */
+.gradient-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(118, 75, 162, 0.4);
+    transition: all 0.3s;
+}
+
+.gradient-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(118, 75, 162, 0.6);
+}
+
+/* افکت شیشه‌ای برای باکس‌ها */
+.glass-box {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+/* ============================================ */
+/* جدول‌ها */
+/* ============================================ */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background-color: #0d1117;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+th, td {
+    padding: 12px;
+    text-align: right;
+    border-bottom: 1px solid #30363d;
+}
+
+th {
+    background-color: #161b22;
+    color: #58a6ff;
+}
+
+tr:hover {
+    background-color: #161b22;
+}
+
+/* ============================================ */
+/* استایل‌های مخصوص */
+/* ============================================ */
+.role-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.role-btn {
+    flex: 1;
+    background-color: #21262d;
+    border: 2px solid #30363d;
+    padding: 10px;
+    border-radius: 8px;
+    color: #c9d1d9;
+    cursor: pointer;
+    text-align: center;
+}
+
+.role-btn.active {
+    border-color: #238636;
+    background-color: #0d1117;
+    color: #3fb950;
+}
+
+.passed {
+    color: #3fb950;
+}
+
+.failed {
+    color: #f85149;
+}
+
+.hidden {
+    display: none;
+}
+
+.status-badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* ============================================ */
+/* تنظیمات چاپ (برای گزارش‌ها) */
+/* ============================================ */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    body {
+        background: white !important;
+        color: black !important;
+    }
+    .container {
+        background: white !important;
+        color: black !important;
+        box-shadow: none !important;
+    }
+    .report-box {
+        background: white !important;
+        border: 1px solid #333 !important;
+    }
+    th, td {
+        color: black !important;
+    }
+}
+
+/* ============================================ */
+/* تنظیمات واکنش‌گرا (گوشی) */
+/* ============================================ */
+@media (max-width: 500px) {
+    .student-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    .status-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    .date-selector {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}

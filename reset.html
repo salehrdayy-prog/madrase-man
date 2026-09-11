@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حذف اطلاعات</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .reset-box {
+            background: #0d1117;
+            padding: 30px;
+            border-radius: 12px;
+            margin: 50px auto;
+            max-width: 450px;
+            text-align: center;
+            border: 1px solid #30363d;
+        }
+        .reset-box h2 { color: #f85149; margin-bottom: 20px; }
+        .reset-box p { color: #8b949e; margin-bottom: 20px; line-height: 1.8; }
+        .reset-box button {
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .btn-danger { background: #da3633; }
+        .btn-danger:hover { background: #f85149; }
+        .btn-warning { background: #d29922; }
+        .btn-warning:hover { background: #e3b341; }
+    </style>
+</head>
+<body>
+    <div class="reset-box">
+        <h2>⚠️ مدیریت اطلاعات</h2>
+        <p>اینجا می‌توانید اطلاعات را پاک کنید. با احتیاط عمل کنید!</p>
+        
+        <p style="font-size: 13px; color: #d29922; border: 1px solid #d29922; padding: 10px; border-radius: 8px;">
+            <strong>پاکسازی موقت:</strong> فقط نشست‌ها و رمزهای موقت را پاک می‌کند. داده‌های اصلی (معلم‌ها، نمرات، دانش‌آموزان) باقی می‌مانند.
+        </p>
+        <button onclick="clearSessionOnly()" class="btn-warning">🧹 پاکسازی موقت (بی‌خطر)</button>
+        
+        <p style="font-size: 13px; color: #f85149; border: 1px solid #f85149; padding: 10px; border-radius: 8px; margin-top: 20px;">
+            <strong>هشدار:</strong> پاکسازی کامل، تمام اطلاعات (مدیران، معلم‌ها، دانش‌آموزان، نمرات، حضور غیاب) را برای همیشه حذف می‌کند.
+        </p>
+        <button onclick="clearAllData()" class="btn-danger">🗑️ پاکسازی کامل</button>
+    </div>
+
+    <script>
+        function clearSessionOnly() {
+            if (!confirm("پاکسازی موقت: فقط نشست‌ها پاک می‌شوند. ادامه؟")) return;
+            
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('userRole');
+            localStorage.removeItem('teacherId');
+            localStorage.removeItem('classId');
+            localStorage.removeItem('activeClassId');
+            localStorage.removeItem('activeAdminId');
+            localStorage.removeItem('subscription_status');
+            localStorage.removeItem('internal_note');
+            localStorage.removeItem('guideShown');
+            
+            alert("پاکسازی موقت انجام شد. حالا به صفحه ورود می‌روید.");
+            window.location.href = 'index.html';
+        }
+
+        function clearAllData() {
+            const confirm1 = confirm("⚠️ هشدار! تمام اطلاعات پاک می‌شود. آیا مطمئن هستید؟");
+            if (!confirm1) return;
+            
+            const confirm2 = confirm("آخرین فرصت! آیا واقعاً می‌خواهید همه چیز را پاک کنید؟ این عمل قابل بازگشت نیست.");
+            if (!confirm2) return;
+            
+            const typed = prompt('برای تایید نهایی، کلمه "حذف" را تایپ کنید:');
+            if (typed !== 'حذف') {
+                alert("لغو شد.");
+                return;
+            }
+            
+            localStorage.clear();
+            alert("تمام اطلاعات پاک شد!");
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

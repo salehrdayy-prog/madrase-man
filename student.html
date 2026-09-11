@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>کارنامه من</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .profile-section {
+            text-align: center; margin-bottom: 20px;
+        }
+        .profile-pic {
+            width: 100px; height: 100px; border-radius: 50%;
+            border: 3px solid #58a6ff; object-fit: cover; display: none;
+        }
+        .restore-btn {
+            background: #1f6feb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        .restore-btn:hover { background: #388bfd; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="margin:0; color:#3fb950;">📄 کارنامه‌ی من</h2>
+            <button onclick="logout()" style="width:auto; padding:8px 15px; background:#da3633;">خروج</button>
+        </div>
+
+        <!-- بخش عکس پروفایل -->
+        <div class="profile-section">
+            <img id="profilePic" class="profile-pic" src="" alt="پروفایل">
+            <div style="margin-top:10px;">
+                <input type="file" id="uploadPic" accept="image/*" style="display:none;">
+                <button onclick="document.getElementById('uploadPic').click()" class="gradient-btn" style="width:auto;">📷 انتخاب عکس</button>
+            </div>
+        </div>
+
+        <!-- دکمه بازیابی گزارش از معلم -->
+        <div style="text-align:center; margin-bottom:20px;">
+            <button class="restore-btn" onclick="importStudentReport()">📥 بازیابی گزارش از معلم</button>
+        </div>
+
+        <div id="welcomeBox" style="background:#0d1117; padding:15px; border-radius:10px; text-align:center; margin-bottom:20px;">
+            <h3 id="welcomeMsg" style="color:#58a6ff;">سلام، دانش‌آموز عزیز!</h3>
+        </div>
+
+        <!-- برنامه روزانه -->
+        <div style="background:#0d1117; padding:20px; border-radius:10px; margin-bottom:20px;">
+            <h3 style="color:#58a6ff;">🗓️ برنامه امروز</h3>
+            <div id="todayScheduleDisplay" style="margin-top:10px;">
+                <p style="color:#8b949e;">در حال بارگذاری...</p>
+            </div>
+        </div>
+
+        <!-- وظایف روزانه -->
+        <div style="background:#0d1117; padding:20px; border-radius:10px; margin-bottom:20px;">
+            <h3 style="color:#f0883e;">✅ وظایف روزانه</h3>
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <input type="text" id="dailyTaskInput" placeholder="مثلاً: حل تمرین ریاضی" style="flex:1;">
+                <button onclick="addDailyTask()" style="width:auto; padding:8px 15px; background:#238636;">افزودن</button>
+            </div>
+            <div id="dailyTasksDisplay" style="margin-top:10px;"></div>
+        </div>
+
+        <!-- نمرات -->
+        <div style="background:#0d1117; padding:20px; border-radius:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #30363d; padding-bottom:10px; margin-bottom:10px;">
+                <h3>📊 نمرات و معدل</h3>
+                <span id="avgDisplay" style="background:#238636; padding:5px 15px; border-radius:20px; font-weight:bold;">معدل: -</span>
+            </div>
+            <table id="studentGradesTable">
+                <thead>
+                    <tr>
+                        <th>درس</th>
+                        <th>نمره</th>
+                        <th>وضعیت</th>
+                        <th>تاریخ</th>
+                    </tr>
+                </thead>
+                <tbody id="gradesBody"></tbody>
+            </table>
+            <p id="noData" style="text-align:center; color:#8b949e; margin-top:20px; display:none;">هیچ نمره‌ای برای شما ثبت نشده است.</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // تابع escape
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // ============================================
+        // ✅ بازیابی گزارش از معلم (باگ ۴ اصلاح شد)
+        // ============================================
+        function importStudentReport() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                
+                reader.onload = function(event) {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        
+                        // چک ساختار فایل
+                        if (!data.schoolData || !Array.isArray(data.schoolData.teachers) || 
+                            data.schoolData.teachers.length === 0) {
+                            alert("فایل گزارش معتبر نیست!");
+                            return;
+                        }
+                        
+                        const teacher = data.schoolData.teachers[0];
+                        if (!Array.isArray(teacher.classes) || teacher.classes.length === 0) {
+                            alert("فایل گزارش معتبر نیست (هیچ کلاسی ندارد)!");
+                            return;
+                        }
+                        
+                        const cls = teacher.classes[0];
+                        const classId = cls.id;
+                        
+                        if (!classId) {
+                            alert("فایل گزارش معتبر نیست (شناسه کلاس وجود ندارد)!");
+                            return;
+                        }
+                        
+                        // ✅ نکته مهم: currentUser را دست نمی‌زنیم!
+                        // فقط classId و teacherId را به‌روز می‌کنیم
+                        localStorage.setItem('classId', classId);
+                        localStorage.setItem('teacherId', teacher.id);
+                        
+                        // ذخیره نمرات
+                        if (data.grades && data.grades[classId]) {
+                            localStorage.setItem(`grades_${classId}`, JSON.stringify(data.grades[classId]));
+                        }
+                        
+                        // ذخیره حضور و غیاب
+                        if (data.attendance && data.attendance[classId]) {
+                            localStorage.setItem(`attendance_${classId}`, JSON.stringify(data.attendance[classId]));
+                        }
+                        
+                        // ذخیره تکالیف و رویدادها
+                        if (Array.isArray(data.assignments)) {
+                            localStorage.setItem('assignments', JSON.stringify(data.assignments));
+                        }
+                        if (Array.isArray(data.events)) {
+                            localStorage.setItem('events', JSON.stringify(data.events));
+                        }
+                        
+                        alert("گزارش با موفقیت بازیابی شد! حالا نمرات شما به‌روزرسانی شد.");
+                        window.location.reload();
+                    } catch (err) {
+                        alert("خطا در خواندن فایل: " + err.message);
+                    }
+                };
+                
+                reader.readAsText(file);
+            };
+            
+            input.click();
+        }
+
+        // ============================================
+        // بارگذاری اولیه
+        // ============================================
+        window.onload = function() {
+            const user = localStorage.getItem('currentUser');
+            const userRole = localStorage.getItem('userRole');
+            const classId = localStorage.getItem('classId');
+            
+            if (!user || userRole !== 'student') { 
+                window.location.href = 'index.html'; 
+                return; 
+            }
+
+            document.getElementById('welcomeMsg').innerText = `سلام ${user}، این نمرات شماست:`;
+
+            // بارگذاری عکس پروفایل
+            const savedPic = localStorage.getItem('student_profile_' + classId);
+            if (savedPic) {
+                document.getElementById('profilePic').src = savedPic;
+                document.getElementById('profilePic').style.display = 'block';
+            }
+
+            // آپلود عکس
+            document.getElementById('uploadPic').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                // چک حجم فایل (حداکثر ۵۰۰ کیلوبایت)
+                if (file.size > 500 * 1024) {
+                    alert("حجم عکس باید کمتر از ۵۰۰ کیلوبایت باشد!");
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const imgData = event.target.result;
+                    localStorage.setItem('student_profile_' + classId, imgData);
+                    document.getElementById('profilePic').src = imgData;
+                    document.getElementById('profilePic').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            });
+
+            // برنامه امروز
+            loadTodaySchedule();
+            
+            // وظایف روزانه
+            loadDailyTasks();
+
+            // ✅ نمرات فقط برای دانش‌آموز فعلی
+            loadMyGrades(user, classId);
+        };
+
+        function loadMyGrades(user, classId) {
+            if (!classId) {
+                document.getElementById('noData').style.display = 'block';
+                document.getElementById('noData').innerText = "کلاس شما پیدا نشد. لطفاً از معلم گزارش بگیرید.";
+                return;
+            }
+            
+            let allGrades = getGradesByClass(classId);
+            if (!Array.isArray(allGrades)) allGrades = [];
+            
+            const myGrades = allGrades.filter(g => g.name === user);
+            const tbody = document.getElementById('gradesBody');
+
+            if (myGrades.length === 0) {
+                document.getElementById('noData').style.display = 'block';
+                return;
+            }
+
+            let sum = 0;
+            tbody.innerHTML = '';
+            
+            myGrades.forEach(item => {
+                const status = item.grade >= 10 
+                    ? '<span style="color:#3fb950;">✅ قبول</span>' 
+                    : '<span style="color:#f85149;">❌ مردود</span>';
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${escapeHtml(item.subject)}</td>
+                    <td style="font-weight:bold;">${item.grade}</td>
+                    <td>${status}</td>
+                    <td style="font-size:12px; color:#8b949e;">${escapeHtml(item.date)}</td>
+                `;
+                tbody.appendChild(row);
+                sum += item.grade;
+            });
+            
+            document.getElementById('avgDisplay').innerText = 
+                `معدل: ${(sum / myGrades.length).toFixed(2)}`;
+        }
+
+        // ============================================
+        // برنامه روزانه
+        // ============================================
+        function loadTodaySchedule() {
+            const today = new Date().toLocaleDateString('fa-IR', { weekday: 'long' });
+            const classId = localStorage.getItem('classId');
+            const schedule = JSON.parse(localStorage.getItem(`weekly_schedule_${classId}`)) || [];
+            
+            const display = document.getElementById('todayScheduleDisplay');
+            
+            if (!Array.isArray(schedule) || schedule.length === 0) {
+                display.innerHTML = `<div style="background:#161b22; padding:10px; border-radius:6px;">
+                    <strong>${escapeHtml(today)}</strong>: هیچ برنامه‌ای تنظیم نشده است.
+                </div>`;
+                return;
+            }
+            
+            const todaySchedule = schedule.filter(item => item.day === today);
+            
+            if (todaySchedule.length === 0) {
+                display.innerHTML = `<div style="background:#161b22; padding:10px; border-radius:6px;">
+                    <strong>${escapeHtml(today)}</strong>: امروز کلاسی ندارید.
+                </div>`;
+                return;
+            }
+            
+            let html = `<div style="background:#161b22; padding:10px; border-radius:6px;">
+                <strong>${escapeHtml(today)}</strong>:
+            </div>`;
+            
+            html += '<div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">';
+            todaySchedule.forEach(item => {
+                html += `<div style="background:#0d1117; padding:8px; border-radius:6px;">
+                    ⏰ ${escapeHtml(item.time)} - 📚 ${escapeHtml(item.subject)}
+                </div>`;
+            });
+            html += '</div>';
+            display.innerHTML = html;
+        }
+
+        // ============================================
+        // وظایف روزانه
+        // ============================================
+        function addDailyTask() {
+            const task = document.getElementById('dailyTaskInput').value.trim();
+            if (!task) { alert("لطفاً وظیفه را وارد کنید!"); return; }
+            
+            let tasks = JSON.parse(localStorage.getItem('daily_tasks')) || [];
+            if (!Array.isArray(tasks)) tasks = [];
+            
+            tasks.push({ text: task, done: false });
+            localStorage.setItem('daily_tasks', JSON.stringify(tasks));
+            
+            document.getElementById('dailyTaskInput').value = '';
+            loadDailyTasks();
+        }
+
+        function loadDailyTasks() {
+            let tasks = JSON.parse(localStorage.getItem('daily_tasks')) || [];
+            if (!Array.isArray(tasks)) tasks = [];
+            
+            const display = document.getElementById('dailyTasksDisplay');
+            
+            if (tasks.length === 0) {
+                display.innerHTML = '<p style="color:#8b949e;">هیچ وظیفه‌ای ثبت نشده است.</p>';
+                return;
+            }
+            
+            let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
+            tasks.forEach((task, index) => {
+                const checked = task.done ? 'checked' : '';
+                const textStyle = task.done ? 'text-decoration: line-through; color: #8b949e;' : '';
+                
+                html += `
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:#161b22; padding:8px; border-radius:6px;">
+                        <div style="display:flex; gap:10px; align-items:center; flex:1;">
+                            <input type="checkbox" ${checked} onchange="toggleTask(${index})" style="width:auto;">
+                            <span style="${textStyle}">${escapeHtml(task.text)}</span>
+                        </div>
+                        <button onclick="deleteTask(${index})" style="width:auto; padding:2px 8px; background:#da3633; font-size:10px;">حذف</button>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            display.innerHTML = html;
+        }
+
+        function toggleTask(index) {
+            let tasks = JSON.parse(localStorage.getItem('daily_tasks')) || [];
+            if (!Array.isArray(tasks) || index < 0 || index >= tasks.length) return;
+            
+            tasks[index].done = !tasks[index].done;
+            localStorage.setItem('daily_tasks', JSON.stringify(tasks));
+            loadDailyTasks();
+        }
+
+        function deleteTask(index) {
+            let tasks = JSON.parse(localStorage.getItem('daily_tasks')) || [];
+            if (!Array.isArray(tasks) || index < 0 || index >= tasks.length) return;
+            
+            tasks.splice(index, 1);
+            localStorage.setItem('daily_tasks', JSON.stringify(tasks));
+            loadDailyTasks();
+        }
+    </script>
+</body>
+</html>

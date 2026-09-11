@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدیریت نمرات</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .date-selector {
+            display: flex; gap: 10px; align-items: center; background: #161b22;
+            padding: 10px 15px; border-radius: 10px; margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .date-selector input, .date-selector select {
+            background: #0d1117; border: 1px solid #30363d; color: #c9d1d9;
+            padding: 8px; border-radius: 5px; flex: 1; min-width: 100px;
+        }
+        .report-box {
+            background: #161b22; padding: 15px; border-radius: 10px; margin-top: 20px;
+            border: 1px solid #30363d; display: none;
+        }
+        .report-box table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .report-box th, .report-box td { padding: 8px; text-align: center; border-bottom: 1px solid #30363d; }
+        .report-box th { background: #0d1117; color: #58a6ff; }
+        .stat-card {
+            background: #0d1117; padding: 10px; border-radius: 8px; text-align: center;
+            flex: 1; min-width: 80px; border: 1px solid #30363d;
+        }
+        .stat-card .num { font-size: 22px; font-weight: bold; color: #58a6ff; }
+        .stat-card .label { font-size: 12px; color: #8b949e; }
+        .action-btn-small {
+            padding: 2px 10px; border-radius: 4px; border: none; cursor: pointer;
+            font-weight: bold; font-size: 14px; margin: 0 2px;
+        }
+        .btn-edit { background: #1f6feb; color: white; }
+        .btn-delete { background: #da3633; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="margin:0; color:#238636;">📊 مدیریت نمرات</h2>
+            <div style="display:flex; gap:10px;">
+                <button onclick="window.location.href='teacher_home.html'" style="width:auto; padding:8px 15px; background:#21262d;">🔙 بازگشت</button>
+                <button onclick="logout()" style="width:auto; padding:8px 15px; background:#da3633;">خروج</button>
+            </div>
+        </div>
+
+        <div id="classInfoBar" style="background:#0d1117; padding:10px 15px; border-radius:8px; margin-bottom:20px; border-right: 4px solid #58a6ff;">
+            <div><span style="color:#8b949e;">کلاس: </span><strong id="currentClassNameDisplay" style="color:#58a6ff;">بارگذاری...</strong></div>
+            <div><span style="color:#8b949e;">درس: </span><strong id="currentSubjectDisplay" style="color:#d29922;">بارگذاری...</strong></div>
+        </div>
+
+        <!-- فرم ثبت نمره -->
+        <div class="form-grid" style="background:#0d1117; padding:20px; border-radius:12px; margin-bottom:25px;">
+            <h3 style="color:#c9d1d9; grid-column: span 2;">➕ ثبت نمره جدید</h3>
+            <div>
+                <label>انتخاب دانش‌آموز</label>
+                <select id="studentNameSelect" style="width:100%; padding:12px;">
+                    <option value="">-- انتخاب کنید --</option>
+                </select>
+            </div>
+            <div>
+                <label>نمره (۰ تا ۲۰)</label>
+                <input type="number" id="grade" min="0" max="20" step="0.25">
+            </div>
+            <div class="full-width">
+                <button onclick="addGrade()">ثبت نمره</button>
+            </div>
+        </div>
+
+        <!-- کنترل گزارش -->
+        <div class="date-selector">
+            <div style="flex:1; min-width:150px;">
+                <label style="font-weight:bold; color:#8b949e;">📅 گزارش ماهانه:</label>
+                <input type="month" id="reportMonth" style="width:100%;">
+            </div>
+            <button onclick="generateMonthlyReport()" style="width:auto; padding:8px 15px; background:#d29922; font-size:13px;">📊 مشاهده ماهانه</button>
+            <button onclick="generateYearlyReport()" style="width:auto; padding:8px 15px; background:#1f6feb; font-size:13px;">📅 گزارش سالانه</button>
+            <button onclick="window.print()" style="width:auto; padding:8px 15px; background:#238636; font-size:13px;">🖨️ چاپ گزارش</button>
+        </div>
+
+        <!-- جدول نمرات روزانه -->
+        <div style="background:#0d1117; padding:20px; border-radius:12px;">
+            <div class="search-box"><input type="text" id="searchBox" placeholder="🔍 جستجو..." onkeyup="renderTable()"></div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>نام</th>
+                            <th>نمره</th>
+                            <th>وضعیت</th>
+                            <th>تاریخ</th>
+                            <th>عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+            <p id="noData" class="text-center text-muted mt-10" style="display:none;">هیچ نمره‌ای ثبت نشده است.</p>
+        </div>
+
+        <!-- بخش گزارش‌ها -->
+        <div class="report-box" id="gradeReportBox">
+            <h3 style="color:#238636; margin-bottom:10px;" id="reportTitle">📊 گزارش</h3>
+            <div id="gradeReportContent">در حال بارگذاری...</div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        let activeClassId = localStorage.getItem('activeClassId');
+        let teacherId = localStorage.getItem('teacherId');
+
+        // تابع escape
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // دریافت ایمن معلم و کلاس
+        function getTeacherAndClass() {
+            if (!teacherId || !activeClassId) return { teacher: null, cls: null };
+            
+            const school = getSchoolData();
+            const teacher = school.teachers.find(t => t.id === teacherId);
+            
+            if (!teacher || !Array.isArray(teacher.classes)) {
+                return { teacher: null, cls: null };
+            }
+            
+            const cls = teacher.classes.find(c => c.id === activeClassId);
+            return { teacher, cls: cls || null };
+        }
+
+        window.onload = function() {
+            if (!activeClassId || localStorage.getItem('userRole') !== 'teacher') {
+                window.location.href = 'teacher_home.html';
+                return;
+            }
+            
+            // چک معلم/کلاس
+            const { teacher, cls } = getTeacherAndClass();
+            if (!teacher || !cls) {
+                alert("کلاس یا معلم یافت نشد! به صفحه قبل برمی‌گردید.");
+                window.location.href = 'teacher_home.html';
+                return;
+            }
+            
+            const now = new Date();
+            document.getElementById('reportMonth').value = 
+                now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+            
+            loadClassInfo();
+            populateStudentDropdown();
+            renderTable();
+        };
+
+        function loadClassInfo() {
+            const { cls } = getTeacherAndClass();
+            if (!cls) {
+                document.getElementById('currentClassNameDisplay').innerText = "نامشخص";
+                document.getElementById('currentSubjectDisplay').innerText = "نامشخص";
+                return;
+            }
+            document.getElementById('currentClassNameDisplay').innerText = cls.name;
+            document.getElementById('currentSubjectDisplay').innerText = cls.subject || "نامشخص";
+        }
+
+        function populateStudentDropdown() {
+            const select = document.getElementById('studentNameSelect');
+            const students = getStudentsList(teacherId, activeClassId);
+            
+            select.innerHTML = '<option value="">-- انتخاب کنید --</option>';
+            
+            if (!Array.isArray(students) || students.length === 0) {
+                select.innerHTML = '<option value="">هیچ دانش‌آموزی نیست</option>';
+                return;
+            }
+            
+            students.forEach(s => {
+                select.innerHTML += `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)}</option>`;
+            });
+        }
+
+        // ✅ اصلاح باگ ۱۰
+        function addGrade() {
+            const { teacher, cls } = getTeacherAndClass();
+            
+            if (!teacher) { alert("معلم یافت نشد!"); return; }
+            if (!cls) { alert("کلاس یافت نشد!"); return; }
+            
+            const name = document.getElementById('studentNameSelect').value;
+            const subject = cls.subject || "نامشخص";
+            const gradeInput = document.getElementById('grade').value;
+            const grade = parseFloat(gradeInput);
+            
+            if (!name) { alert("لطفاً دانش‌آموز را انتخاب کنید!"); return; }
+            if (isNaN(grade) || grade < 0 || grade > 20) {
+                alert("نمره را به درستی وارد کنید (۰ تا ۲۰)!");
+                return;
+            }
+
+            let grades = getGradesByClass(activeClassId);
+            if (!Array.isArray(grades)) grades = [];
+            
+            const now = new Date();
+            const dateStr = now.getFullYear() + '/' + 
+                String(now.getMonth() + 1).padStart(2, '0') + '/' + 
+                String(now.getDate()).padStart(2, '0');
+            
+            grades.push({ 
+                name, 
+                subject, 
+                grade, 
+                date: dateStr, 
+                id: Date.now() + Math.floor(Math.random() * 1000)
+            });
+            
+            saveGradesByClass(activeClassId, grades);
+            
+            document.getElementById('grade').value = '';
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            const search = document.getElementById('searchBox').value.toLowerCase().trim();
+            
+            let grades = getGradesByClass(activeClassId);
+            if (!Array.isArray(grades)) grades = [];
+            
+            if (search) { 
+                grades = grades.filter(g => 
+                    g.name && g.name.toLowerCase().includes(search)
+                ); 
+            }
+
+            if (grades.length === 0) { 
+                document.getElementById('noData').style.display = 'block'; 
+                tbody.innerHTML = ''; 
+                return; 
+            }
+            
+            document.getElementById('noData').style.display = 'none';
+            
+            tbody.innerHTML = '';
+            grades.forEach((item, index) => {
+                const status = item.grade >= 10 
+                    ? '<span style="color:#3fb950;">✅ قبول</span>' 
+                    : '<span style="color:#f85149;">❌ مردود</span>';
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${escapeHtml(item.name)}</td>
+                        <td style="font-weight:bold;">${item.grade}</td>
+                        <td>${status}</td>
+                        <td style="font-size:12px; color:#8b949e;">${escapeHtml(item.date)}</td>
+                        <td>
+                            <button class="action-btn-small btn-edit" onclick="editGrade(${index})">✏️</button>
+                            <button class="action-btn-small btn-delete" onclick="deleteGrade(${index})">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function deleteGrade(index) {
+            if (!confirm("آیا مطمئنید که می‌خواهید این نمره را حذف کنید؟")) return;
+            
+            let grades = getGradesByClass(activeClassId);
+            if (!Array.isArray(grades) || index < 0 || index >= grades.length) {
+                alert("نمره یافت نشد!");
+                return;
+            }
+            
+            grades.splice(index, 1);
+            saveGradesByClass(activeClassId, grades);
+            renderTable();
+        }
+
+        function editGrade(index) {
+            let grades = getGradesByClass(activeClassId);
+            if (!Array.isArray(grades) || index < 0 || index >= grades.length) {
+                alert("نمره یافت نشد!");
+                return;
+            }
+            
+            const item = grades[index];
+            const newGrade = prompt(`نمره جدید برای ${item.name}:`, item.grade);
+            
+            if (newGrade !== null) {
+                const g = parseFloat(newGrade);
+                if (!isNaN(g) && g >= 0 && g <= 20) {
+                    grades[index].grade = g;
+                    saveGradesByClass(activeClassId, grades);
+                    renderTable();
+                } else {
+                    alert("نمره باید بین ۰ تا ۲۰ باشد!");
+                }
+            }
+        }
+
+        // ============================================
+        // گزارش‌ها
+        // ============================================
+        function generateMonthlyReport() {
+            const { cls } = getTeacherAndClass();
+            if (!cls) { alert("کلاس یافت نشد!"); return; }
+            
+            const students = Array.isArray(cls.students) ? cls.students : [];
+            if (students.length === 0) { alert("هیچ دانش‌آموزی وجود ندارد."); return; }
+
+            const monthInput = document.getElementById('reportMonth').value;
+            if (!monthInput) { alert("لطفاً ماه را انتخاب کنید."); return; }
+            
+            const [year, month] = monthInput.split('-').map(Number);
+
+            let grades = getGradesByClass(activeClassId);
+            if (!Array.isArray(grades)) grades = [];
+            
+            // فیلتر نمرات این ماه
+            const monthlyGrades = grades.filter(g => {
+                if (!g.date) return false;
+                const parts = g.date.split('/');
+                if (parts.length < 2) return false;
+                return parseInt(parts[0]) === year && parseInt(parts[1]) === month;
+            });
+
+            if (monthlyGrades.length === 0) { 
+                alert("هیچ نمره‌ای برای این ماه ثبت نشده است."); 
+                return; 
+            }
+
+            showReport(monthlyGrades, students, `گزارش نمرات ${year}/${month}`);
+        }
+
+        function generateYearlyReport() {
+            const { cls } = getTeacherAndClass();
+            if (!cls) { alert("کلاس یافت نشد!"); return; }
+            
+            const students = Array.isArray(cls.students) ? cls.students : [];
+            if (students.length === 0) { alert("هیچ دانش‌آموزی وجود ندارد."); return; }
+
+            let grades = getGradesByClass(activeClassId);
+            if (!Array.isArray(grades)) grades = [];
+            if (grades.length === 0) { alert("هیچ نمره‌ای برای این کلاس ثبت نشده است."); return; }
+
+            showReport(grades, students, "📅 گزارش سالانه (تمام نمرات)");
+        }
+
+        function showReport(filteredGrades, students, title) {
+            let reportData = [];
+            let totalClassAvg = 0;
+
+            students.forEach(s => {
+                const studentGrades = filteredGrades.filter(g => g.name === s.name);
+                if (studentGrades.length > 0) {
+                    let total = 0;
+                    studentGrades.forEach(g => { total += g.grade; });
+                    const avg = total / studentGrades.length;
+                    totalClassAvg += avg;
+                    reportData.push({ name: s.name, avg: avg, count: studentGrades.length });
+                }
+            });
+
+            if (reportData.length === 0) {
+                alert("هیچ داده‌ای برای گزارش وجود ندارد.");
+                return;
+            }
+
+            const classAverage = totalClassAvg / reportData.length;
+
+            const reportBox = document.getElementById('gradeReportBox');
+            const contentDiv = document.getElementById('gradeReportContent');
+            document.getElementById('reportTitle').innerText = title;
+            reportBox.style.display = 'block';
+
+            let statsHtml = `
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px;">
+                    <div class="stat-card"><div class="num">${filteredGrades.length}</div><div class="label">تعداد نمرات</div></div>
+                    <div class="stat-card"><div class="num">${reportData.length}</div><div class="label">دانش‌آموزان</div></div>
+                    <div class="stat-card"><div class="num">${classAverage.toFixed(2)}</div><div class="label">معدل کل کلاس</div></div>
+                </div>
+            `;
+
+            let tableHtml = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>نام دانش‌آموز</th>
+                            <th>تعداد نمره</th>
+                            <th>میانگین</th>
+                            <th>وضعیت</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            reportData.sort((a, b) => b.avg - a.avg);
+            reportData.forEach(r => {
+                const status = r.avg >= 10 ? '🟢' : '🔴';
+                const color = r.avg >= 10 ? '#3fb950' : '#f85149';
+                tableHtml += `<tr>
+                    <td style="font-weight:bold;">${escapeHtml(r.name)}</td>
+                    <td>${r.count}</td>
+                    <td style="font-weight:bold; color:${color};">${r.avg.toFixed(2)}</td>
+                    <td>${status}</td>
+                </tr>`;
+            });
+            
+            tableHtml += `</tbody></table>`;
+            contentDiv.innerHTML = statsHtml + tableHtml;
+        }
+    </script>
+</body>
+</html>

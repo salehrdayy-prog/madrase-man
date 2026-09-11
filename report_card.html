@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>کارنامه ترمی</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .box {
+            background: #0d1117;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #30363d;
+        }
+        .term-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .term-selector input {
+            flex: 1;
+            min-width: 120px;
+        }
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .report-table th, .report-table td {
+            padding: 8px;
+            text-align: center;
+            border-bottom: 1px solid #30363d;
+        }
+        .report-table th {
+            background: #0d1117;
+            color: #58a6ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="margin:0; color:#58a6ff;">🎓 کارنامه ترمی</h2>
+            <div style="display:flex; gap:10px;">
+                <button onclick="window.location.href='teacher_home.html'" style="width:auto; padding:8px 15px; background:#21262d;">🔙 بازگشت</button>
+                <button onclick="logout()" style="width:auto; padding:8px 15px; background:#da3633;">خروج</button>
+            </div>
+        </div>
+
+        <div class="box">
+            <h3 style="color:#238636;">📊 مشاهده کارنامه ترمی</h3>
+            <div class="term-selector">
+                <input type="month" id="termStart" placeholder="شروع ترم">
+                <input type="month" id="termEnd" placeholder="پایان ترم">
+                <button onclick="generateTermReport()" style="width:auto; padding:8px 20px; background:#238636;">مشاهده کارنامه</button>
+            </div>
+            <div id="termReportDisplay"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        window.onload = function() {
+            if (localStorage.getItem('userRole') !== 'teacher') {
+                window.location.href = 'index.html';
+                return;
+            }
+        };
+
+        function generateTermReport() {
+            const startMonth = document.getElementById('termStart').value;
+            const endMonth = document.getElementById('termEnd').value;
+            const activeClassId = localStorage.getItem('activeClassId');
+            const teacherId = localStorage.getItem('teacherId');
+
+            if (!startMonth || !endMonth) {
+                alert("لطفاً بازه ترم را انتخاب کنید!");
+                return;
+            }
+            
+            if (startMonth > endMonth) {
+                alert("ماه شروع باید قبل از ماه پایان باشد!");
+                return;
+            }
+
+            if (!activeClassId || !teacherId) {
+                alert("کلاس انتخاب نشده! لطفاً از پنل معلم یک کلاس انتخاب کنید.");
+                return;
+            }
+
+            const grades = getGradesByClass(activeClassId);
+            const students = getStudentsList(teacherId, activeClassId);
+
+            if (!Array.isArray(grades) || grades.length === 0) {
+                document.getElementById('termReportDisplay').innerHTML = 
+                    `<p style="color:#8b949e;">هیچ نمره‌ای برای این کلاس ثبت نشده است.</p>`;
+                return;
+            }
+
+            const filteredGrades = grades.filter(g => {
+                if (!g.date) return false;
+                const parts = g.date.split('/');
+                if (parts.length < 2) return false;
+                const gradeDate = `${parts[0]}-${String(parts[1]).padStart(2, '0')}`;
+                return gradeDate >= startMonth && gradeDate <= endMonth;
+            });
+
+            let html = `<div style="margin-top:15px;">`;
+            
+            if (filteredGrades.length === 0) {
+                html += `<p style="color:#8b949e;">هیچ نمره‌ای برای این بازه ثبت نشده است.</p>`;
+            } else {
+                html += `<table class="report-table">`;
+                html += `<thead><tr><th>نام دانش‌آموز</th><th>تعداد نمره</th><th>میانگین</th><th>وضعیت</th></tr></thead><tbody>`;
+                
+                let hasAnyRow = false;
+                students.forEach(s => {
+                    const studentGrades = filteredGrades.filter(g => g.name === s.name);
+                    if (studentGrades.length > 0) {
+                        hasAnyRow = true;
+                        let total = 0;
+                        studentGrades.forEach(g => { total += g.grade; });
+                        const avg = total / studentGrades.length;
+                        html += `<tr>
+                            <td style="font-weight:bold;">${escapeHtml(s.name)}</td>
+                            <td>${studentGrades.length}</td>
+                            <td style="font-weight:bold; color:${avg >= 10 ? '#3fb950' : '#f85149'};">${avg.toFixed(2)}</td>
+                            <td>${avg >= 10 ? '✅ قبول' : '❌ مردود'}</td>
+                        </tr>`;
+                    }
+                });
+                
+                if (!hasAnyRow) {
+                    html += `<tr><td colspan="4" style="color:#8b949e;">هیچ دانش‌آموزی در این بازه نمره ندارد.</td></tr>`;
+                }
+                
+                html += `</tbody></table>`;
+            }
+            html += `</div>`;
+            document.getElementById('termReportDisplay').innerHTML = html;
+        }
+    </script>
+</body>
+</html>
