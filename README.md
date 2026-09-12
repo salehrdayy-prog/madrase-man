@@ -162,7 +162,7 @@ cd madrase-man
 ## 📞 ارتباط با ما
 
 - 📲 **کانال بله:** [ble.ir/madrse_man](https://ble.ir/madrse_man)
-- 📧 **ایمیل:** [salehrdayy62@gmail.com](mailto:salehrdayy62@gmail.com)
+- 📧 **ایمیل:** [salehrdayy62@gmail.com](mailto:salhrdayy62@gmail.com)
 
 > در کانال بله، آموزش انتقال فایل‌های پشتیبان، راهنمای استفاده، و اطلاع‌رسانی نسخه‌های جدید قرار داده می‌شود.
 
