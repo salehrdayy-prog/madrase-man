@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "ir.madraseman.app",
+    "sha256_cert_fingerprints": ["65:A3:21:4D:08:18:20:FD:F7:76:BB:02:A3:1F:44:A8:87:91:4E:6C:7B:84:92:D8:60:2A:87:3D:38:80:19:CF"]
+  }
+}]
