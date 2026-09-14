@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پنل مدیریت مدیر</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .admin-box { background: #0d1117; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #30363d; }
+        .teacher-card { display: flex; justify-content: space-between; align-items: center; background: #161b22; padding: 10px 15px; border-radius: 8px; border: 1px solid #30363d; margin-bottom: 10px; }
+        .created-teacher-card { background: #161b22; padding: 10px 15px; border-radius: 8px; border: 2px solid #238636; margin-bottom: 10px; font-size: 14px; }
+        .created-teacher-card strong { color: #3fb950; }
+        .monitor-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .monitor-table th, .monitor-table td { padding: 8px; text-align: right; border-bottom: 1px solid #30363d; }
+        .monitor-table th { background: #0d1117; color: #58a6ff; }
+        .view-grades-btn { background: #1f6feb; color: white; border: none; border-radius: 4px; padding: 4px 12px; cursor: pointer; font-size: 12px; }
+        .back-to-list-btn { background: #21262d; color: white; border: 1px solid #30363d; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-size: 13px; width: auto; margin-top: 15px; }
+        .teacher-password { color: #58a6ff; font-weight: bold; font-size: 14px; margin-left: 10px; }
+        .export-btn { background: #238636; color: white; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+    <!-- ردیف اول: عنوان + خروج -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+        <h2 style="margin:0; color:#d29922;">👔 پنل مدیریت مدیر</h2>
+        <button onclick="logout()" style="width:auto; padding:8px 18px; background:#da3633;">خروج</button>
+    </div>
+
+    <!-- ردیف دوم: دکمه‌های دیگر -->
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px;">
+        <button onclick="exportBackup()" style="width:auto; padding:8px 15px; background:#d29922;">📥 تهیه نسخه پشتیبان</button>
+        <button onclick="importBackup()" style="width:auto; padding:8px 15px; background:#1f6feb;">📤 بازیابی نسخه پشتیبان</button>
+        <button onclick="viewTeacherReport()" style="width:auto; padding:8px 15px; background:#238636;">📊 گزارش جامع معلم</button>
+        <button onclick="openChatbot()" style="width:auto; padding:8px 15px; background:#8957e5;">💬 دستیار</button>
+    </div>
+    
+        <div class="admin-box">
+            <h3 style="color:#58a6ff; margin-bottom:10px;">➕ ساخت معلم جدید</h3>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+                <div style="flex:1; min-width:120px;">
+                    <label style="font-size:12px;">نام کاربری معلم</label>
+                    <input type="text" id="newTeacherUsername" placeholder="مثلاً: استاد_احمدی">
+                </div>
+                <div style="flex:1; min-width:120px;">
+                    <label style="font-size:12px;">رمز عبور معلم</label>
+                    <input type="text" id="newTeacherPassword" placeholder="مثلاً: 12345">
+                </div>
+                <div style="flex:1; min-width:120px;">
+                    <label style="font-size:12px;">نام مدرسه</label>
+                    <input type="text" id="newTeacherSchool" placeholder="مثلاً: دبیرستان شهید بهشتی">
+                </div>
+                <button onclick="createTeacher()" style="width:auto; padding:8px 20px; background:#238636;">ساختن معلم</button>
+            </div>
+            <div id="createdTeacherInfo" style="margin-top:15px; display:none;"></div>
+        </div>
+
+        <div class="admin-box">
+            <h3 style="color:#d29922; margin-bottom:10px;">📋 لیست معلم‌ها</h3>
+            <div id="teachersList"></div>
+        </div>
+
+        <div class="admin-box">
+            <h3 style="color:#3fb950; margin-bottom:10px;">📊 نظارت و گزارش کلاس‌ها</h3>
+            <div id="gradesMonitor"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="chatbot.js"></script>
+    <script>
+        window.onload = function() {
+            if (localStorage.getItem('userRole') !== 'admin') {
+                window.location.href = 'index.html'; return;
+            }
+            
+            if (!checkSubscription()) {
+                alert("اشتراک سالانه مدرسه شما به پایان رسیده است!");
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('currentUser');
+                window.location.href = 'index.html'; return;
+            }
+            
+            loadTeachers();
+            loadGradesMonitor();
+        };
+
+        function createTeacher() {
+            const username = document.getElementById('newTeacherUsername').value.trim();
+            const password = document.getElementById('newTeacherPassword').value.trim();
+            const school = document.getElementById('newTeacherSchool').value.trim();
+            if (!username || !password || !school) { alert("لطفاً تمام فیلدها را وارد کنید!"); return; }
+
+            const result = createTeacherByAdmin(username, password, school);
+            if (!result) return; // تکراری بود یا خطا
+            
+            const infoDiv = document.getElementById('createdTeacherInfo');
+            infoDiv.style.display = 'block';
+            infoDiv.innerHTML = `<div class="created-teacher-card"><strong>✅ معلم ساخته شد!</strong><br>نام کاربری: <strong>${escapeHtml(username)}</strong><br>رمز عبور: <strong>${escapeHtml(password)}</strong></div>`;
+            
+            document.getElementById('newTeacherUsername').value = '';
+            document.getElementById('newTeacherPassword').value = '';
+            document.getElementById('newTeacherSchool').value = '';
+            
+            loadTeachers();
+        }
+
+        // تابع کمکی برای جلوگیری از XSS ساده
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // باگ ۱ حل شد چون exportBackup در script.js اضافه شد
+        // اینجا فقط دکمه‌ها صدا می‌زنند
+
+        function loadTeachers() {
+            const school = getSchoolData();
+            
+            if (!Array.isArray(school.teachers)) {
+                school.teachers = [];
+                saveSchoolData(school);
+            }
+            
+            const teachers = school.teachers;
+            const container = document.getElementById('teachersList');
+            
+            if (teachers.length === 0) {
+                container.innerHTML = '<p style="color:#8b949e;">هنوز معلمی ساخته نشده است.</p>';
+                return;
+            }
+            
+            let html = '<div style="display:flex; flex-direction:column; gap:10px;">';
+            teachers.forEach(t => {
+                if (!Array.isArray(t.classes)) t.classes = [];
+                
+                html += `
+                    <div class="teacher-card">
+                        <div>
+                            <span style="font-weight:bold; color:#c9d1d9;">👨‍🏫 ${escapeHtml(t.username)}</span>
+                            <span style="color:#8b949e; font-size:12px; margin-right:10px;">${escapeHtml(t.schoolName)}</span>
+                            <span style="color:#8b949e; font-size:12px; margin-right:10px;">${t.classes.length} کلاس</span>
+                            <span class="teacher-password">رمز: ${escapeHtml(t.password)}</span>
+                        </div>
+                        <div>
+                            <button onclick="exportTeacherFile('${t.id}')" class="export-btn">📥 تهیه فایل</button>
+                            <button onclick="viewTeacherDetails('${t.id}')" style="width:auto; padding:4px 12px; background:#58a6ff; font-size:12px;">مشاهده</button>
+                            <button onclick="deleteTeacher('${t.id}')" style="width:auto; padding:4px 12px; background:#da3633; font-size:12px;">🗑️ حذف</button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function viewTeacherDetails(teacherId) {
+            const school = getSchoolData();
+            const teacher = school.teachers.find(t => t.id === teacherId);
+            if (!teacher) { 
+                document.getElementById('gradesMonitor').innerHTML = '<p style="color:#f85149;">معلم یافت نشد.</p>';
+                return; 
+            }
+            
+            if (!Array.isArray(teacher.classes)) teacher.classes = [];
+            
+            let html = `<div style="background:#0d1117; padding:15px; border-radius:10px; margin-top:10px;">`;
+            html += `<h4 style="color:#58a6ff;">👨‍🏫 ${escapeHtml(teacher.username)} - ${escapeHtml(teacher.schoolName)}</h4>`;
+            
+            if (teacher.classes.length === 0) {
+                html += `<p style="color:#8b949e;">هیچ کلاسی ندارد.</p>`;
+            } else {
+                html += `<table class="monitor-table"><thead><tr><th>کلاس</th><th>درس</th><th>دانش‌آموزان</th></tr></thead><tbody>`;
+                teacher.classes.forEach(cls => {
+                    const studentsCount = Array.isArray(cls.students) ? cls.students.length : 0;
+                    html += `<tr><td>${escapeHtml(cls.name)}</td><td>${escapeHtml(cls.subject || '—')}</td><td>${studentsCount}</td></tr>`;
+                });
+                html += `</tbody></table>`;
+            }
+            html += `<button class="back-to-list-btn" onclick="loadGradesMonitor()">🔙 بازگشت به لیست کلاس‌ها</button></div>`;
+            document.getElementById('gradesMonitor').innerHTML = html;
+        }
+
+        function loadGradesMonitor() {
+            const school = getSchoolData();
+            if (!Array.isArray(school.teachers)) {
+                school.teachers = [];
+                saveSchoolData(school);
+            }
+            
+            const teachers = school.teachers;
+            const container = document.getElementById('gradesMonitor');
+            
+            if (teachers.length === 0) {
+                container.innerHTML = '<p style="color:#8b949e;">هنوز معلمی ساخته نشده است.</p>';
+                return;
+            }
+            
+            let hasAnyClass = false;
+            let html = '<div style="display:flex; flex-direction:column; gap:10px;">';
+            teachers.forEach(t => {
+                if (!Array.isArray(t.classes)) t.classes = [];
+                t.classes.forEach(cls => {
+                    hasAnyClass = true;
+                    const grades = getGradesByClass(cls.id);
+                    let avg = 0;
+                    if (grades.length > 0) {
+                        let sum = 0;
+                        grades.forEach(g => { sum += g.grade; });
+                        avg = sum / grades.length;
+                    }
+                    const studentsCount = Array.isArray(cls.students) ? cls.students.length : 0;
+                    
+                    html += `
+                        <div style="background:#161b22; padding:10px; border-radius:8px; border:1px solid #30363d;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                                <div>
+                                    <span style="font-weight:bold;">📂 ${escapeHtml(cls.name)}</span>
+                                    <span style="color:#8b949e; font-size:12px; margin-right:10px;">(${escapeHtml(cls.subject || '—')})</span>
+                                    <span style="color:#8b949e; font-size:12px; margin-right:10px;">${studentsCount} دانش‌آموز</span>
+                                </div>
+                                <div style="display:flex; gap:10px; align-items:center;">
+                                    <span style="color:#8b949e; font-size:12px;">میانگین: <strong style="color:#58a6ff;">${avg.toFixed(2)}</strong></span>
+                                    <button onclick="viewClassGrades('${cls.id}')" class="view-grades-btn">نمرات</button>
+                                    <button onclick="viewClassAttendance('${cls.id}')" class="view-grades-btn" style="background:#d29922;">حضور غیاب</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+            html += '</div>';
+            
+            if (!hasAnyClass) {
+                container.innerHTML = '<p style="color:#8b949e;">هنوز کلاسی ساخته نشده است.</p>';
+                return;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        function viewTeacherReport() {
+            const school = getSchoolData();
+            if (!Array.isArray(school.teachers)) {
+                school.teachers = [];
+                saveSchoolData(school);
+            }
+            
+            const teachers = school.teachers;
+            const container = document.getElementById('gradesMonitor');
+            
+            if (teachers.length === 0) {
+                container.innerHTML = '<p style="color:#8b949e;">هنوز معلمی ساخته نشده است.</p>';
+                return;
+            }
+            
+            let html = `<h4 style="color:#238636;">📊 گزارش جامع معلمان</h4>`;
+            html += `<table class="monitor-table"><thead><tr>
+                <th>معلم</th>
+                <th>کلاس</th>
+                <th>دانش‌آموز</th>
+                <th>میانگین</th>
+                <th>مجموع حضور</th>
+                <th>مجموع غیاب</th>
+                <th>درصد حضور</th>
+            </tr></thead><tbody>`;
+            
+            let hasAnyClass = false;
+            teachers.forEach(t => {
+                if (!Array.isArray(t.classes)) t.classes = [];
+                t.classes.forEach(cls => {
+                    hasAnyClass = true;
+                    const grades = getGradesByClass(cls.id);
+                    const attendance = getAttendanceByClass(cls.id);
+                    const studentsCount = Array.isArray(cls.students) ? cls.students.length : 0;
+                    
+                    // میانگین نمرات
+                    let avg = 0;
+                    if (grades.length > 0) {
+                        let sum = 0;
+                        grades.forEach(g => { sum += g.grade; });
+                        avg = sum / grades.length;
+                    }
+                    
+                    // شمارش حضور/غیاب کل رکوردها (باگ ۷ اصلاح شد با شفاف‌سازی)
+                    let presents = 0;
+                    let absents = 0;
+                    Object.keys(attendance).forEach(key => {
+                        if (attendance[key] === 'present') presents++;
+                        else if (attendance[key] === 'absent') absents++;
+                    });
+                    
+                    const total = presents + absents;
+                    const percent = total > 0 ? Math.round((presents / total) * 100) : 0;
+                    
+                    html += `<tr>
+                        <td>${escapeHtml(t.username)}</td>
+                        <td>${escapeHtml(cls.name)}</td>
+                        <td>${studentsCount}</td>
+                        <td style="color:#58a6ff; font-weight:bold;">${avg.toFixed(2)}</td>
+                        <td style="color:#3fb950;">${presents}</td>
+                        <td style="color:#f85149;">${absents}</td>
+                        <td style="color:${percent >= 80 ? '#3fb950' : percent >= 50 ? '#d29922' : '#f85149'}; font-weight:bold;">${percent}%</td>
+                    </tr>`;
+                });
+            });
+            
+            if (!hasAnyClass) {
+                container.innerHTML = '<p style="color:#8b949e;">هنوز کلاسی ساخته نشده است.</p>';
+                return;
+            }
+            
+            html += `</tbody></table>`;
+            html += `<button class="back-to-list-btn" onclick="loadGradesMonitor()">🔙 بازگشت</button>`;
+            container.innerHTML = html;
+        }
+
+        function viewClassGrades(classId) {
+            const grades = getGradesByClass(classId);
+            let html = `<div style="background:#0d1117; padding:15px; border-radius:10px; margin-top:10px;">`;
+            html += `<h4 style="color:#238636;">📊 نمرات کلاس</h4>`;
+            if (grades.length === 0) {
+                html += `<p style="color:#8b949e;">هیچ نمره‌ای ثبت نشده است.</p>`;
+            } else {
+                html += `<table class="monitor-table"><thead><tr><th>نام</th><th>نمره</th><th>وضعیت</th><th>تاریخ</th></tr></thead><tbody>`;
+                grades.forEach(g => {
+                    html += `<tr>
+                        <td>${escapeHtml(g.name)}</td>
+                        <td>${g.grade}</td>
+                        <td>${g.grade >= 10 ? '✅ قبول' : '❌ مردود'}</td>
+                        <td>${escapeHtml(g.date)}</td>
+                    </tr>`;
+                });
+                html += `</tbody></table>`;
+            }
+            html += `<button class="back-to-list-btn" onclick="loadGradesMonitor()">🔙 بازگشت به لیست کلاس‌ها</button></div>`;
+            document.getElementById('gradesMonitor').innerHTML = html;
+        }
+
+        // ✅ باگ ۵ اصلاح شد: تطبیق دقیق دانش‌آموز با split('_')[0]
+        function viewClassAttendance(classId) {
+            const attendance = getAttendanceByClass(classId);
+            
+            // پیدا کردن دانش‌آموزان کلاس از school data
+            const school = getSchoolData();
+            let students = [];
+            school.teachers.forEach(t => {
+                if (!Array.isArray(t.classes)) return;
+                t.classes.forEach(cls => {
+                    if (cls.id === classId) {
+                        students = Array.isArray(cls.students) ? cls.students : [];
+                    }
+                });
+            });
+            
+            let html = `<div style="background:#0d1117; padding:15px; border-radius:10px; margin-top:10px;">`;
+            html += `<h4 style="color:#d29922;">📋 حضور و غیاب کلاس</h4>`;
+            
+            if (students.length === 0) {
+                html += `<p style="color:#8b949e;">هیچ دانش‌آموزی وجود ندارد.</p>`;
+            } else {
+                html += `<table class="monitor-table"><thead><tr><th>نام</th><th>حاضر</th><th>غایب</th><th>مرخصی</th></tr></thead><tbody>`;
+                
+                students.forEach(s => {
+                    let presents = 0;
+                    let absents = 0;
+                    let excused = 0;
+                    
+                    // ✅ اصلاح باگ: split('_')[0] به جای includes
+                    Object.keys(attendance).forEach(key => {
+                        const parts = key.split('_');
+                        const studentId = parts[0];
+                        if (studentId !== s.id) return;
+                        
+                        const status = attendance[key];
+                        if (status === 'present') presents++;
+                        else if (status === 'absent') absents++;
+                        else if (status === 'excused') excused++;
+                    });
+                    
+                    html += `<tr>
+                        <td>${escapeHtml(s.name)}</td>
+                        <td style="color:#3fb950;">${presents}</td>
+                        <td style="color:#f85149;">${absents}</td>
+                        <td style="color:#d29922;">${excused}</td>
+                    </tr>`;
+                });
+                
+                html += `</tbody></table>`;
+            }
+            
+            html += `<button class="back-to-list-btn" onclick="loadGradesMonitor()">🔙 بازگشت به لیست کلاس‌ها</button></div>`;
+            document.getElementById('gradesMonitor').innerHTML = html;
+        }
+
+        function deleteTeacher(teacherId) {
+            if (confirm("آیا مطمئن هستید که می‌خواهید این معلم را حذف کنید؟")) {
+                const school = getSchoolData();
+                school.teachers = school.teachers.filter(t => t.id !== teacherId);
+                saveSchoolData(school);
+                loadTeachers();
+                loadGradesMonitor();
+            }
+        }
+    </script>
+</body>
+</html>
